@@ -1,8 +1,13 @@
 import nibabel as nib
 import numpy as np
 import os
+import cv2
 
-if __name__ == '__main__':
+
+train_amount = 0.8
+tomo = False
+
+if tomo:
     datasets_path = "./datasets/tomo"
     imgs_path = os.path.join(datasets_path, "img/volume_pt1")
     masks_path = os.path.join(datasets_path, "mask")
@@ -37,6 +42,31 @@ if __name__ == '__main__':
     X_val = imgs[:,:,toTrain:]
     y = masks[:,:,:toTrain]
     y_val = masks[:,:,toVal:]
+else:
+  if not os.path.isdir("mask"):
+    !unzip data.zip
+
+  input_path = os.listdir("img/")
+  masks = []
+  imgs = []
+  norm = 0
+  vali = 0
+  for file in input_path:
+      img_path = os.path.join("img/", file)
+      mask_path = os.path.join("mask/", file)
+      img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
+      mask = cv2.cvtColor(cv2.imread(mask_path), cv2.COLOR_BGR2GRAY)
+      #img = cv2.resize(img, (512, 512))
+      #mask = cv2.resize(mask, (512, 512))
+      img = np.asarray(img)
+      mask = np.asarray(mask)
+      imgs.append(img)
+      masks.append(mask)
 
 
-
+  total_samples = imgs.shape[0]
+  toTrain = int(train_amount * total_samples)
+  X = imgs[:,:,:toTrain]
+  X_val = imgs[:,:,toTrain:]
+  y = masks[:,:,:toTrain]
+  y_val = masks[:,:,toTrain:]
