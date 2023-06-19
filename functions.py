@@ -1,8 +1,10 @@
 import cv2
 import os 
 import tensorflow as tf
+import tensorflow.keras.backend as K
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 def remap_array(element):
     mapping = {0:0, 127:1, 255:2}
@@ -11,7 +13,7 @@ def remap_array(element):
     else:
         return element
 
-def load_dataset(img_path, mask_path, classes, sample_size):
+def load_dataset(img_path, mask_path, classes, sample_size, shape):
     images = []
     masks = []
     img_files = sorted(os.listdir(img_path), key=lambda x: int(''.join(filter(str.isdigit, x))))
@@ -19,6 +21,7 @@ def load_dataset(img_path, mask_path, classes, sample_size):
 
     for file in img_files:
         image = cv2.imread(os.path.join(img_path, file), cv2.IMREAD_GRAYSCALE)
+        image = cv2.resize(image, shape)
         images.append(image)
         if len(images) >= sample_size:
             break
@@ -27,10 +30,13 @@ def load_dataset(img_path, mask_path, classes, sample_size):
         if classes == 2:
             # Masks will have 0 or 255 values
             image = cv2.imread(os.path.join(mask_path, file), cv2.IMREAD_GRAYSCALE)
-            _, image = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY)
+            image = cv2.resize(image, shape)
+            _, image = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY).astype(np.float16)
+            image = image / np.max(image)
         else:
             # Masks will keep their natural values
             image = cv2.imread(os.path.join(mask_path, file), cv2.IMREAD_UNCHANGED)
+            image = cv2.resize(image, shape)
         masks.append(image)
         if len(masks) >= sample_size:
             break
@@ -38,14 +44,10 @@ def load_dataset(img_path, mask_path, classes, sample_size):
     masks = np.array(masks)
     # Normalizing images
     images = np.array(images) / 255
-    if classes == 2:
-        masks_one_hot = np.array(tf.one_hot(masks / 255, classes, axis=-1)).astype(np.float32)
-    else:
-        masks = np.vectorize(remap_array)(masks).astype(np.float32)
-        masks_one_hot = np.array(tf.one_hot(masks, classes, axis=-1)).astype(np.float32)
-        masks /= 2.0
-    show_data_sample(images[55,:,:], masks[55,:,:], masks_one_hot[55,:,:], 3)
-    return images, masks, masks_one_hot
+    if classes > 2:
+        masks = np.vectorize(remap_array)(masks).astype(np.float16)
+        masks = np.array(tf.one_hot(masks, classes, axis=-1)).astype(np.float16)
+    return images, masks
 
 
 def show_data_sample(image, mask, one_hot_mask, classes):
@@ -84,3 +86,22 @@ if __name__ == '__main__':
     print(X.shape, y.shape, y2.shape)
     for i in range(20,sample_size):
         show_data_sample(X[i], y[i], y2[i], classes = classes)
+
+
+# Metrics
+
+def dice_coefficient(y_true, y_pred, smooth=1):
+    num_classes = K.int_shape(y_pred)[-1]
+    dice = 0
+    for index in range(num_classes):    
+        y_true_class = y_true[..., index]
+        y_pred_class = y_pred[..., index]
+        y_true_class = K.cast(y_true_class, dtype='float32')  # Convert y_true to float16
+        intersection = K.sum(K.abs(y_true_class * y_pred_class), axis=-1)
+        union = K.sum(y_true_class, axis=-1) + K.sum(y_pred_class, axis=-1)
+        dice += (2.0 * intersection + smooth) / (union + smooth)
+    return dice/num_classes
+
+def dice_loss(y_true, y_pred):
+    loss = 1 - dice_coefficient(y_true, y_pred)
+    return loss
