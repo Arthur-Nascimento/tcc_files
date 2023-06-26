@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Add, Conv2DTranspose, Cropping2D
 from tensorflow.keras.models import Model
 
-def fcn8(filters, shape = (512,512,1)):
+def fcn8(filters, classes = 2, shape = (512,512,1)):
     input = Input(shape)
     #VGG-16 Encoder
     conv1 = Conv2D(filters, (3,3), padding = 'same', activation = 'relu', kernel_initializer = 'he_uniform')(input)
@@ -42,7 +42,10 @@ def fcn8(filters, shape = (512,512,1)):
     out2 = Cropping2D((1,1))(out2)
     add01 = Conv2D(2, (1,1), activation = "relu", padding = 'same')(pool3)
     out2 = Add()([out2, add01])
-    output = Conv2DTranspose(1, kernel_size=(16,16),strides = (8,8), padding='valid',  activation = 'sigmoid')(out2)
+    if classes == 2:
+        output = Conv2DTranspose(1, kernel_size=(16,16),strides = (8,8), padding='valid',  activation = 'sigmoid')(out2)
+    else:
+        output = Conv2DTranspose(classes, kernel_size=(16,16),strides = (8,8), padding='valid',  activation = 'softmax')(out2)
     output = Cropping2D(cropping=((0,8),(0,8)))(output)
     model = Model(inputs = [input], outputs = [output])
 

@@ -26,8 +26,28 @@ for value, count in zip(value, counts):
     print(f"{value}: {count}")
 '''
 
-path = './datasets/tomo_img/img'
+path = './datasets/tomo_img/mask'
 path2 = './datasets/balanced_tomo/mask'
 
-for file in os.listdir(path2):
-    shutil.copy(os.path.join(path, file), os.path.join(path2[:-4], 'img',file))
+
+# Saving image as png
+'''for file in os.listdir(path):
+    img = cv2.imread(os.path.join(path, file), cv2.IMREAD_UNCHANGED)
+    tmp = np.array(np.unique(img, return_counts = True))
+    if tmp.shape[1] > 1:
+        shutil.copy(os.path.join(path, file), os.path.join(path2[:-4], 'mask',file))
+        shutil.copy(os.path.join(path[:-4], 'img', file), os.path.join(path2[:-4], 'img', file))
+        print(f"Saved file {file}")'''
+while True:
+    id = int(input("Numero da imagem: "))
+    image = f"{path2}/{id}.png"
+
+    img = cv2.imread(image, cv2.IMREAD_UNCHANGED)
+
+    '''f, axarr = plt.subplots(2,2)
+    axarr[0,0].imshow(X_test[image_id], cmap = 'gray')
+    axarr[0,1].imshow(np.argmax(y_test[image_id,:,:], axis=-1), cmap = 'gray', vmin =0, vmax = 2)
+    axarr[1,0].imshow(X_test[image_id], cmap = 'gray')
+    axarr[1,1].imshow(np.argmax(raw[image_id,:,:], axis=-1), cmap = 'gray', vmin =0, vmax = 2)   '''
+    plt.imshow(img, cmap = 'gray', vmin=0, vmax=2)
+    plt.show()
